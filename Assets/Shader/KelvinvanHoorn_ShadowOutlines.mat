@@ -7,7 +7,7 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Unlit_ShadowOutlines
+  m_Name: KelvinvanHoorn_ShadowOutlines
   m_Shader: {fileID: 4800000, guid: e02b12244bf8ddc46978fbbf3256492e, type: 3}
   m_ShaderKeywords: 
   m_LightmapFlags: 4
@@ -18,11 +18,7 @@ Material:
   disabledShaderPasses: []
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs:
-    - _MainTex:
-        m_Texture: {fileID: 0}
-        m_Scale: {x: 1, y: 1}
-        m_Offset: {x: 0, y: 0}
+    m_TexEnvs: []
     m_Floats: []
     m_Colors: []
   m_BuildTextureStacks: []

@@ -1,4 +1,4 @@
-Shader "KelvinvanHoorn/ShadowOutlines"
+Shader "KelvinvanHoorn/ShadowOutlines_Finished"
 {
     Properties
     {
@@ -17,7 +17,12 @@ Shader "KelvinvanHoorn/ShadowOutlines"
             #pragma vertex vert
             #pragma fragment frag
 
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
+            #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
+            #pragma multi_compile _ _SHADOWS_SOFT
+
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             struct Attributes
             {
@@ -47,7 +52,10 @@ Shader "KelvinvanHoorn/ShadowOutlines"
 
             float4 frag (Varyings IN) : SV_Target
             {
-                float3 col = float3(1, 1, 1);
+                float4 shadowCoord = TransformWorldToShadowCoord(IN.posWS);
+                float shadow = MainLightRealtimeShadow(shadowCoord);
+
+                float3 col = float3(1, 1, 1) * shadow;
 
                 return float4(col, 1);
             }
