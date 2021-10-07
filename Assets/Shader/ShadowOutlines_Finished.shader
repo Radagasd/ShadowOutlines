@@ -53,9 +53,13 @@ Shader "KelvinvanHoorn/ShadowOutlines_Finished"
             float4 frag (Varyings IN) : SV_Target
             {
                 float4 shadowCoord = TransformWorldToShadowCoord(IN.posWS);
-                float shadow = MainLightRealtimeShadow(shadowCoord);
+                float shadowMap = MainLightRealtimeShadow(shadowCoord);
 
-                float3 col = float3(1, 1, 1) * shadow;
+                float NdotL = dot(_MainLightPosition.xyz, IN.normalWS);
+                float finalShadow = min(saturate(NdotL), shadowMap);
+                //finalShadow = step(0.1, finalShadow);
+
+                float3 col = float3(1, 1, 1) * finalShadow;
 
                 return float4(col, 1);
             }
