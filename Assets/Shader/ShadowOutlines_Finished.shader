@@ -2,6 +2,10 @@ Shader "KelvinvanHoorn/ShadowOutlines_Finished"
 {
     Properties
     {
+        _ShadowStep ("Shadow step value", Range(0, 1)) = 0.1
+        _ShadowMin ("Minimum shadow value", Range(0, 1)) = 0.2
+        _OutlineColor ("Outline color", Color) = (0, 0, 0, 1)
+        _ShadowDilation ("Shadow dilation", Range(0, 10)) = 1
     }
     SubShader
     {
@@ -50,6 +54,54 @@ Shader "KelvinvanHoorn/ShadowOutlines_Finished"
 				return OUT;
 			}
 
+            float _ShadowStep, _ShadowMin, _ShadowDilation;
+            float3 _OutlineColor;
+
+            // 3x3 sample points
+            static float2 sobelSamplePoints[9] = {
+                float2(-1, 1), float2(0, 1), float2(1, 1),
+                float2(-1, 0), float2(0, 0), float2(1, 0),
+                float2(-1, -1), float2(0, -1), float2(1, -1)
+            };
+
+            static float sobelXKernel[9] = {
+                1, 0, -1,
+                2, 0, -2,
+                1, 0, -1
+            };
+
+            static float sobelYKernel[9] = {
+                1, 2, 1,
+                0, 0, 0,
+                -1, -2, -1
+            };
+
+            // Calculate the Sobel operator of the shadowmap
+            float ShadowSobelOperator(float4 shadowCoord, float dilation)
+            {
+                // Get the shadowmap texelsize
+                ShadowSamplingData shadowSamplingData = GetMainLightShadowSamplingData();
+                float4 shadowMap_TexelSize = shadowSamplingData.shadowmapSize;
+
+                // Initialise results
+                float sobelX = 0;
+                float sobelY = 0;
+
+                // Loop over sample points
+                [unroll] for (int i = 0; i < 9; i++)
+                {
+                    // Sample shadowmap
+                    float shadowImage = MainLightRealtimeShadow(float4(shadowCoord.xy + sobelSamplePoints[i] * dilation * shadowMap_TexelSize.xy, shadowCoord.zw));
+
+                    // Sum the convolution values
+                    sobelX += shadowImage * sobelXKernel[i];
+                    sobelY += shadowImage * sobelYKernel[i];
+                }
+
+                // Return the magnitude
+                return sqrt(sobelX * sobelX + sobelY * sobelY);
+            }
+
             float4 frag (Varyings IN) : SV_Target
             {
                 float4 shadowCoord = TransformWorldToShadowCoord(IN.posWS);
@@ -57,9 +109,15 @@ Shader "KelvinvanHoorn/ShadowOutlines_Finished"
 
                 float NdotL = dot(_MainLightPosition.xyz, IN.normalWS);
                 float finalShadow = min(saturate(NdotL), shadowMap);
-                //finalShadow = step(0.1, finalShadow);
+                finalShadow = saturate(step(_ShadowStep, finalShadow) + _ShadowMin);
 
                 float3 col = float3(1, 1, 1) * finalShadow;
+
+                float shadowEdgeMask = ShadowSobelOperator(shadowCoord, _ShadowDilation / pow(2, shadowCoord.w));
+                shadowEdgeMask = saturate(ShadowSobelOperator(shadowCoord, _ShadowDilation / (1 + shadowCoord.w))) * (1 - step(_ShadowStep, min(saturate(NdotL), shadowMap))) * step(_ShadowStep, saturate(NdotL));
+                col = lerp(col, _OutlineColor, saturate(shadowEdgeMask));
+                //col = shadowEdgeMask;
+                //col = lerp(col, float3(1, 0 ,0), (step(_ShadowStep, shadowEdgeMask) + step(0.4, shadowEdgeMask)) * 0.7 / 2);
 
                 return float4(col, 1);
             }
