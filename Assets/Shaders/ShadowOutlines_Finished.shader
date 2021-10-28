@@ -107,17 +107,19 @@ Shader "KelvinvanHoorn/ShadowOutlines_Finished"
                 float4 shadowCoord = TransformWorldToShadowCoord(IN.posWS);
                 float shadowMap = MainLightRealtimeShadow(shadowCoord);
 
-                float NdotL = dot(_MainLightPosition.xyz, IN.normalWS);
-                float finalShadow = min(saturate(NdotL), shadowMap);
-                finalShadow = saturate(step(_ShadowStep, finalShadow) + _ShadowMin);
+                float NdotL = saturate(dot(_MainLightPosition.xyz, IN.normalWS));
+                
+                float combinedShadow = min(NdotL, shadowMap);
+                float shadowValue = saturate(step(_ShadowStep, combinedShadow) + _ShadowMin);
+                
+                float shadowOutlineMask = ShadowSobelOperator(shadowCoord, _ShadowDilation / pow(2, shadowCoord.w));
+                // Mask, 1 = shadowmap shadows, 0 = no shadowmap shadows
+                shadowOutlineMask *= (1 - step(_ShadowStep, shadowMap));
+                // Mask, 1 = no NdotL shadows, 0 = NdotL shadows
+                shadowOutlineMask *= step(_ShadowStep, NdotL);
 
-                float3 col = float3(1, 1, 1) * finalShadow;
-
-                float shadowEdgeMask = ShadowSobelOperator(shadowCoord, _ShadowDilation / pow(2, shadowCoord.w));
-                shadowEdgeMask = saturate(ShadowSobelOperator(shadowCoord, _ShadowDilation / (1 + shadowCoord.w))) * (1 - step(_ShadowStep, min(saturate(NdotL), shadowMap))) * step(_ShadowStep, saturate(NdotL));
-                col = lerp(col, _OutlineColor, saturate(shadowEdgeMask));
-                //col = shadowEdgeMask;
-                //col = lerp(col, float3(1, 0 ,0), (step(_ShadowStep, shadowEdgeMask) + step(0.4, shadowEdgeMask)) * 0.7 / 2);
+                float3 col = float3(1, 1, 1) * shadowValue;
+                col = lerp(col, _OutlineColor, saturate(shadowOutlineMask));
 
                 return float4(col, 1);
             }
